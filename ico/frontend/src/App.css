@@ -1,0 +1,12 @@
+.App-background {
+  background-color: #0288d1;
+}
+
+.App-container {
+  margin: 0 auto;
+  width: 75%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}

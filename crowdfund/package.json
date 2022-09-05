@@ -1,0 +1,20 @@
+{
+  "name": "crowdfund",
+  "scripts": {
+    "test": "nodemon -x npx hardhat test -w contracts -w test -e js,ts,sol",
+    "coverage": "nodemon -x npx hardhat coverage -w contracts -w test -e js,ts,sol"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^1.0.2",
+    "dotenv": "^16.0.1",
+    "hardhat": "^2.10.1",
+    "nodemon": "^2.0.16",
+    "prettier-plugin-solidity": "^1.0.0-dev.22"
+  },
+  "engines": {
+    "node": ">=16.13.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.7.0"
+  }
+}
