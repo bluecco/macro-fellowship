@@ -75,6 +75,7 @@ contract Airdrop is Ownable {
     /// @param _to The address the claimed MACRO should be sent to
     function signatureClaim(bytes calldata signature, address _to, uint256 amount) external {
         require(!isECDSADisabled, "SIGS_DISABLED");
+        if (alreadyClaimed[_to]) revert AlreadyClaimed(_to);
 
         bytes32 r;
         bytes32 s;
@@ -86,9 +87,9 @@ contract Airdrop is Ownable {
             v := and(mload(add(sig, 65)), 255)
         }
 
-        address actualSigner = ecrecover(toTypedDataHash(_to, amount), v, r, s);
+        address actualSigner = ecrecover(toTypedDataHash(msg.sender, amount), v, r, s);
 
-        require(actualSigner == signer, "not signed by contract signer");
+        if(actualSigner != signer) revert WrongSigner(signer, actualSigner);
         alreadyClaimed[_to] = true;
         macroToken.transfer(_to, amount);
     }
@@ -102,6 +103,7 @@ contract Airdrop is Ownable {
     /// is included in the Merkle tree represented by `Airdrop.merkleRoot`
     /// @param _to The address the claimed MACRO should be sent to
     function merkleClaim(bytes32[] calldata _proof, address _to, uint256 amount) external {
+        if (alreadyClaimed[_to]) revert AlreadyClaimed(_to);
         bytes32 currHash = toLeafFormat(_to, amount);
         for (uint256 i = 0; i < _proof.length; i++) {
             currHash = currHash <= _proof[i]
@@ -152,4 +154,6 @@ contract Airdrop is Ownable {
     }
 
     event ECDSADisabled(address owner);
+    error AlreadyClaimed(address);
+    error WrongSigner(address signer, address actualSigner);
 }

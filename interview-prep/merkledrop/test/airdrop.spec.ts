@@ -115,10 +115,23 @@ describe("Airdrop", function () {
       expect(await macroToken.balanceOf(rest[10].address)).to.be.equal(ethers.utils.parseEther("0"));
       expect(await macroToken.balanceOf(airdrop.address)).to.be.equal(ethers.utils.parseEther("100"));
     });
+
+    it("Should transfer token if leaf 4 is part of the tree", async () => {
+      proof = [leaves[2], parent1];
+      await airdrop.merkleClaim(proof, rest[2].address, ethers.utils.parseEther("1"));
+
+      expect(await airdrop.alreadyClaimed(rest[2].address)).to.be.true;
+      expect(await macroToken.balanceOf(rest[2].address)).to.be.equal(ethers.utils.parseEther("1"));
+      expect(await macroToken.balanceOf(airdrop.address)).to.be.equal(ethers.utils.parseEther("99"));
+
+      await expect(
+        airdrop.merkleClaim(proof, rest[2].address, ethers.utils.parseEther("1"))
+      ).to.be.revertedWithCustomError(airdrop, "AlreadyClaimed");
+    });
   });
 
   describe("Signature claiming", () => {
-    it("Should tranfer token if message is signed by airdrop signer", async () => {
+    it("Should transfer token if message is signed by airdrop signer", async () => {
       const signature = await account1._signTypedData(
         {
           name: "Airdrop",
@@ -133,18 +146,18 @@ describe("Airdrop", function () {
           ],
         },
         {
-          claimer: account2.address,
+          claimer: account1.address,
           amount: ethers.utils.parseEther("1"),
         }
       );
 
-      await airdrop.signatureClaim(signature, account2.address, ethers.utils.parseEther("1"));
+      await airdrop.connect(account1).signatureClaim(signature, account2.address, ethers.utils.parseEther("1"));
       expect(await airdrop.alreadyClaimed(account2.address)).to.be.true;
       expect(await macroToken.balanceOf(account2.address)).to.be.equal(ethers.utils.parseEther("1"));
       expect(await macroToken.balanceOf(airdrop.address)).to.be.equal(ethers.utils.parseEther("99"));
     });
 
-    it("Block tranfer token if message is not signed by airdrop signer", async () => {
+    it("Block transfer token if message is not signed by airdrop signer", async () => {
       const signature = await rest[10]._signTypedData(
         {
           name: "Airdrop",
@@ -166,10 +179,40 @@ describe("Airdrop", function () {
 
       await expect(
         airdrop.signatureClaim(signature, rest[10].address, ethers.utils.parseEther("1"))
-      ).to.be.revertedWith("not signed by contract signer");
+      ).to.be.revertedWithCustomError(airdrop, "WrongSigner");
       expect(await airdrop.alreadyClaimed(rest[10].address)).to.be.false;
       expect(await macroToken.balanceOf(rest[10].address)).to.be.equal(ethers.utils.parseEther("0"));
       expect(await macroToken.balanceOf(airdrop.address)).to.be.equal(ethers.utils.parseEther("100"));
+    });
+
+    it("Block transfer token if address already claimed tokens", async () => {
+      const signature = await account1._signTypedData(
+        {
+          name: "Airdrop",
+          version: "v1",
+          chainId: hre.network.config.chainId, // Hardhat
+          verifyingContract: airdrop.address,
+        },
+        {
+          Claim: [
+            { name: "claimer", type: "address" },
+            { name: "amount", type: "uint256" },
+          ],
+        },
+        {
+          claimer: account1.address,
+          amount: ethers.utils.parseEther("1"),
+        }
+      );
+
+      await airdrop.connect(account1).signatureClaim(signature, account2.address, ethers.utils.parseEther("1"));
+      expect(await airdrop.alreadyClaimed(account2.address)).to.be.true;
+      expect(await macroToken.balanceOf(account2.address)).to.be.equal(ethers.utils.parseEther("1"));
+      expect(await macroToken.balanceOf(airdrop.address)).to.be.equal(ethers.utils.parseEther("99"));
+
+      await expect(
+        airdrop.connect(account1).signatureClaim(signature, account2.address, ethers.utils.parseEther("1"))
+      ).to.be.revertedWithCustomError(airdrop, "AlreadyClaimed");
     });
   });
 });
